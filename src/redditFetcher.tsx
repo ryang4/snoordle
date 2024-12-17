@@ -75,7 +75,7 @@ export class RedditFetcher {
     // Store post counts
     await this.context.redis.set(
       `posts:${subredditName}:${post.id}`,
-      JSON.stringify(post.body)
+      JSON.stringify(wordCounts)
     );
 
     // Add to active posts
@@ -88,23 +88,13 @@ export class RedditFetcher {
     await this.incrementPostCounts(subredditName, wordCounts);
   }
 
-  private async getCommentBodies(comments: AsyncIterable<any>): Promise<string[]> {
-    const bodies: string[] = [];
-    for await (const comment of comments) {
-      if (comment.body) {
-        bodies.push(comment.body);
-      }
-    }
-    return bodies;
-  }
-
   private async countPostWords(post: Post): Promise<Record<string, number>> {
     // Only use specific text content
     const textParts = [
       post.title || '',
       post.body || '',
     ];
-    
+
     // Add comment bodies
     const comments = post.comments;
     comments.limit = 100;
@@ -149,7 +139,7 @@ export class RedditFetcher {
   private async decrementPostCounts(subredditName: string, postId: string): Promise<void> {
     const postKey = `posts:${subredditName}:${postId}`;
     const counts = await this.context.redis.get(postKey);
-    
+
     if (counts) {
       const wordCounts = JSON.parse(counts) as Record<string, number>;
       const wordsKey = `words:${subredditName}`;
