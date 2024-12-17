@@ -37,14 +37,18 @@ export class RedditFetcher {
     // Get current post IDs and evict old posts IDs
     const currentPostIds = new Set<string>();
     for await (const post of posts) {
-      currentPostIds.add(post.id);
+      if (post.authorName !=='snoordle-v2') {
+        currentPostIds.add(post.id);
+      }
     }
-    await this.removeExpiredPosts(subreddit.name, currentPostIds);
+      await this.removeExpiredPosts(subreddit.name, currentPostIds);
   
-    // Process new posts, evict old posts
-    for await (const post of posts) {
-      await this.processPost(subreddit.name, post);
-    }
+      // Process new posts, evict old posts
+      for await (const post of posts) {
+        if (post.authorName !=='snoordle-v2') {
+          await this.processPost(subreddit.name, post);
+        }
+      }
   }
   
   private async removeExpiredPosts(subredditName: string, currentPostIds: Set<string>): Promise<void> {
@@ -124,7 +128,7 @@ export class RedditFetcher {
 
   private cleanText(text: string): string {
     return text
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '') // Remove punctuation
+      .replace(/[[\].,\/#!$%\^&\*;:{}=\-_`~()]/g, '') // Remove punctuation
       .replace(/\s{2,}/g, ' ') // Remove extra spaces
       .trim();
   }
