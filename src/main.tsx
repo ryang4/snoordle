@@ -1,4 +1,6 @@
 import './createPost.js';
+import { RedditFetcher } from './redditFetcher.js';
+import { useAsync } from '@devvit/public-api';
 
 import { Devvit, useState } from '@devvit/public-api';
 
@@ -6,15 +8,11 @@ import { Devvit, useState } from '@devvit/public-api';
 type WebViewMessage =
   | {
       type: 'initialData';
-      data: { username: string; currentCounter: number };
+      data: { username: string, postId: string, words: string[] };
     }
   | {
-      type: 'setCounter';
+      type: 'saveUserResults';
       data: { newCounter: number };
-    }
-  | {
-      type: 'updateCounter';
-      data: { currentCounter: number };
     };
 
 Devvit.configure({
@@ -33,11 +31,19 @@ Devvit.addCustomPostType({
       return currUser?.username ?? 'anon';
     });
 
-    // Load latest counter from redis with `useAsync` hook
-    const [counter, setCounter] = useState(async () => {
-      const redisCount = await context.redis.get(`counter_${context.postId}`);
-      return Number(redisCount ?? 0);
+    // // Load latest counter from redis with `useAsync` hook
+    // const [counter, setCounter] = useState(async () => {
+    //   const redisCount = await context.redis.get(`counter_${context.postId}`);
+    //   return Number(redisCount ?? 0);
+    // });
+
+    // Initialize RedditFetcher and get top words
+    const fetcher = new RedditFetcher(context);
+    const [topWords, setTopWords] = useState(async () => {
+      const words = await fetcher.getTopWords(20) 
+      return words ?? ['loading...'];
     });
+    const postId = context.postId ?? 'missing-post-id';
 
     // Create a reactive state for web view visibility
     const [webviewVisible, setWebviewVisible] = useState(false);
@@ -45,20 +51,10 @@ Devvit.addCustomPostType({
     // When the web view invokes `window.parent.postMessage` this function is called
     const onMessage = async (msg: WebViewMessage) => {
       switch (msg.type) {
-        case 'setCounter':
-          await context.redis.set(`counter_${context.postId}`, msg.data.newCounter.toString());
-          context.ui.webView.postMessage('myWebView', {
-            type: 'updateCounter',
-            data: {
-              currentCounter: msg.data.newCounter,
-            },
-          });
-          setCounter(msg.data.newCounter);
+        case 'saveUserResults':
           break;
         case 'initialData':
-        case 'updateCounter':
           break;
-
         default:
           throw new Error(`Unknown message type: ${msg satisfies never}`);
       }
@@ -71,7 +67,8 @@ Devvit.addCustomPostType({
         type: 'initialData',
         data: {
           username: username,
-          currentCounter: counter,
+          words: topWords,
+          postId: postId,
         },
       });
     };

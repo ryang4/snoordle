@@ -14,22 +14,14 @@ Devvit.addMenuItem({
     const { reddit, ui } = context;
     const subreddit = await reddit.getCurrentSubreddit();
     
-    // Initialize RedditFetcher and get top words
-    const fetcher = new RedditFetcher(context);
-    const topWords = await fetcher.getTopWords(20);
-    
     const post = await reddit.submitPost({
-      title: 'Top Words in Subreddit',
+      title: 'Play Snoordle!!',
       subredditName: subreddit.name,
       preview: (
         <vstack height="100%" width="100%" alignment="middle center">
           <text size="large">Analyzing subreddit words...</text>
         </vstack>
       ),
-      // Pass the words to the web view
-      data: {
-        topWords: JSON.stringify(topWords)
-      }
     });
     
     ui.showToast({ text: 'Created post!' });
