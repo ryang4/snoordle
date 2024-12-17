@@ -1,11 +1,16 @@
 class App {
   constructor() {
     const output = document.querySelector('#messageOutput');
-    const increaseButton = document.querySelector('#btn-increase');
-    const decreaseButton = document.querySelector('#btn-decrease');
     const usernameLabel = document.querySelector('#username');
-    const counterLabel = document.querySelector('#counter');
-    var counter = 0;
+    const postLabel = document.querySelector('#page-id');
+    const wordsLabel = document.querySelector('#top-words');
+
+    const sendToDevvit = (type, data) => {
+      window.parent.postMessage({
+        type: 'from-webview',
+        data: { type, data }
+      }, '*');
+    };
 
     // When the Devvit app sends a message with `context.ui.webView.postMessage`, this will be triggered
     window.addEventListener('message', (ev) => {
@@ -20,33 +25,27 @@ class App {
 
         // Load initial data
         if (message.type === 'initialData') {
-          const { username, currentCounter } = message.data;
+          const { username, words, postId } = message.data;
           usernameLabel.innerText = username;
-          counterLabel.innerText = counter = currentCounter;
+          postLabel.innerText = postId;
         }
 
-        // Update counter
-        if (message.type === 'updateCounter') {
-          const { currentCounter } = message.data;
-          counterLabel.innerText = counter = currentCounter;
+        // Load new words
+        if (message.type === 'sendUpdatedWords') {
+          const { words } = message.data;
+          wordsLabel.innerText = words;
         }
+
+        // // Update counter
+        // if (message.type === 'updateCounter') {
+        //   const { currentCounter } = message.data;
+        //   counterLabel.innerText = currentCounter;
+        // }
       }
     });
 
-    increaseButton.addEventListener('click', () => {
-      // Sends a message to the Devvit app
-      window.parent?.postMessage(
-        { type: 'setCounter', data: { newCounter: Number(counter + 1) } },
-        '*'
-      );
-    });
-
-    decreaseButton.addEventListener('click', () => {
-      // Sends a message to the Devvit app
-      window.parent?.postMessage(
-        { type: 'setCounter', data: { newCounter: Number(counter - 1) } },
-        '*'
-      );
+    updateButton.addEventListener('click', () => {
+      sendToDevvit('updateWordCounts', {});
     });
   }
 }

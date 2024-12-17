@@ -30,7 +30,7 @@ export class RedditFetcher {
     return topWords.map(entry => entry.member);
   }
 
-  private async updateWordCounts(): Promise<void> {
+  async updateWordCounts(): Promise<void> {
     const subreddit = await this.context.reddit.getCurrentSubreddit();
     const posts = await subreddit.getTopPosts({ timeframe: 'day', limit: 25 });
 

@@ -13,6 +13,14 @@ type WebViewMessage =
   | {
       type: 'saveUserResults';
       data: { newCounter: number };
+    }
+  |  {
+      type: 'updateWordCounts';
+      data: {};
+    }
+  | {
+      type: 'sendUpdatedWords';
+      data: { words: string[] };
     };
 
 Devvit.configure({
@@ -43,6 +51,7 @@ Devvit.addCustomPostType({
       const words = await fetcher.getTopWords(20) 
       return words ?? ['loading...'];
     });
+//    const topWords = ['loading...'];
     const postId = context.postId ?? 'missing-post-id';
 
     // Create a reactive state for web view visibility
@@ -53,6 +62,16 @@ Devvit.addCustomPostType({
       switch (msg.type) {
         case 'saveUserResults':
           break;
+        case 'updateWordCounts':
+          await fetcher.updateWordCounts();
+          setTopWords(await fetcher.getTopWords(20));
+          
+          context.ui.webView.postMessage('myWebView', {
+            type: 'sendUpdatedWords',
+            data: topWords,
+          });
+          break
+        case 'sendUpdatedWords':
         case 'initialData':
           break;
         default:
@@ -93,13 +112,13 @@ Devvit.addCustomPostType({
                 {username ?? ''}
               </text>
             </hstack>
-            <hstack>
+            {/* <hstack>
               <text size="medium">Current counter:</text>
               <text size="medium" weight="bold">
                 {' '}
                 {counter ?? ''}
               </text>
-            </hstack>
+            </hstack> */}
           </vstack>
           <spacer />
           <button onPress={onShowWebviewClick}>Launch App</button>
