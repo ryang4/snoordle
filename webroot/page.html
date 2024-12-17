@@ -6,21 +6,16 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <meta charset="UTF-8" />
-    <title>Web View Example</title>
+    <title>Letter Grid</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h1>This is your page.html</h1>
-    <h3>Your top words are <span id="top-words">Top Words</span></h3>
-    <h3>Your PageId Is<span id="page-id">0</span></h3>
-    <h3>Your username is <span id="username">Username</span></h3>
-    <div class="button-container">
-      <!-- <button id="btn-increase">Increase Counter ⬆️</button>
-      <button id="btn-decrease">Decrease Counter ⬇️</button> -->
-      <button id="btn-update">Update Words List</button>
+    <input type="text" id="word-input" readonly placeholder="Click letters to form a word..." />
+    <div id="letter-grid" class="letter-grid">
+      <!-- Letter tiles will be dynamically inserted here -->
     </div>
-    <h3>Last message from Devvit blocks:</h3>
-    <pre id="messageOutput"></pre>
+    <button id="submit-word">Submit Word</button>
+    <div id="toast" class="toast"></div>
     <script type="application/javascript" src="script.js"></script>
   </body>
 </html>

@@ -19,9 +19,10 @@ body {
   color: var(--text-color);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.3;
-  position: fixed;
+  position: relative; /* Change from fixed to relative */
   width: 100%;
   height: 100%;
+  overflow-y: auto;  /* Allow vertical scrolling */
 }
 
 h1,
@@ -102,6 +103,104 @@ pre {
   margin: 0;
 }
 
+/* Letter Grid Styles */
+.letter-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);  /* Changed to 6 to accommodate backspace */
+  gap: 0.5rem;       /* Reduced gap */
+  width: 100%;
+  max-width: 500px;  /* Reduced from 650px */
+  flex: 1;
+  margin: 1rem auto; /* Reduced margin */
+  padding: 0.75rem;  /* Reduced padding */
+}
+
+.tile {
+  aspect-ratio: 1;
+  background-color: white;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem; /* Slightly reduced font size */
+  font-weight: 600;
+  color: var(--text-color);
+  box-shadow: var(--shadow);
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tile.active {
+  background-color: var(--accent-color);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tile.backspace {
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 0.8rem;  /* Smaller font for "backspace" text */
+}
+
+#word-input {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0.75rem;
+  font-size: 1.25rem;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius);
+  background-color: white;
+  color: var(--text-color);
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+#word-input::placeholder {
+  color: var(--primary-color);
+  opacity: 0.6;
+}
+
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: none;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+#submit-word {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  background-color: var(--accent-color);
+}
+
+#submit-word:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   body {
     padding: 0.75rem;
@@ -111,4 +210,22 @@ pre {
   h1 {
     font-size: 1.5rem;
   }
+
+  .letter-grid {
+    gap: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .tile {
+    font-size: 0.9rem;
+  }
+}
+
+/* Debug Output Styles */
+.debug-output {
+  margin-top: 2rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
 }

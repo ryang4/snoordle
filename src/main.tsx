@@ -8,20 +8,25 @@ import { Devvit, useState } from '@devvit/public-api';
 type WebViewMessage =
   | {
       type: 'initialData';
-      data: { username: string, postId: string, words: string[] };
+      data: { 
+        username: string;
+        postId: string;
+        words: string[];
+        debugData: any[]; // Add debug data to initial payload
+      };
     }
   | {
       type: 'saveUserResults';
       data: { newCounter: number };
-    }
-  |  {
-      type: 'updateWordCounts';
-      data: {};
-    }
-  | {
-      type: 'sendUpdatedWords';
-      data: { words: string[] };
     };
+  // |  {
+  //     type: 'updateWordCounts';
+  //     data: {};
+  //   }
+  // | {
+  //     type: 'sendUpdatedWords';
+  //     data: { words: string[] };
+  //   };
 
 Devvit.configure({
   redditAPI: true,
@@ -62,16 +67,16 @@ Devvit.addCustomPostType({
       switch (msg.type) {
         case 'saveUserResults':
           break;
-        case 'updateWordCounts':
-          await fetcher.updateWordCounts();
-          setTopWords(await fetcher.getTopWords(20));
+        // case 'updateWordCounts':
+        //   await fetcher.updateWordCounts();
+        //   setTopWords(await fetcher.getTopWords(20));
           
-          context.ui.webView.postMessage('myWebView', {
-            type: 'sendUpdatedWords',
-            data: topWords,
-          });
-          break
-        case 'sendUpdatedWords':
+        //   context.ui.webView.postMessage('myWebView', {
+        //     type: 'sendUpdatedWords',
+        //     data: topWords,
+        //   });
+        //   break
+        // case 'sendUpdatedWords':
         case 'initialData':
           break;
         default:

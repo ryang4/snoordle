@@ -68,14 +68,14 @@ export class RedditFetcher {
     
     if (await this.context.redis.zScore(activePostsKey, post.id)) {
       return;
-    }
+    } 
 
     const wordCounts = await this.countPostWords(post);
     
     // Store post counts
     await this.context.redis.set(
       `posts:${subredditName}:${post.id}`,
-      JSON.stringify(wordCounts)
+      JSON.stringify(post.body)
     );
 
     // Add to active posts
@@ -88,25 +88,55 @@ export class RedditFetcher {
     await this.incrementPostCounts(subredditName, wordCounts);
   }
 
-  private async countPostWords(post: Post): Promise<Record<string, number>> {
-    let text = post.title + ' ' + (post.body || '');
-    const comments = post.comments;
-    
+  private async getCommentBodies(comments: AsyncIterable<any>): Promise<string[]> {
+    const bodies: string[] = [];
     for await (const comment of comments) {
-      text += ' ' + comment.body;
+      if (comment.body) {
+        bodies.push(comment.body);
+      }
+    }
+    return bodies;
+  }
+
+  private async countPostWords(post: Post): Promise<Record<string, number>> {
+    // Only use specific text content
+    const textParts = [
+      post.title || '',
+      post.body || '',
+    ];
+    
+    // Add comment bodies
+    const comments = post.comments;
+    comments.limit = 100;
+    for await (const comment of comments) {
+      if (comment.body) {
+        textParts.push(comment.body);
+      }
     }
 
-    return this.countWords(text);
+    return this.countWords(textParts.join(' '));
   }
 
   private countWords(text: string): Record<string, number> {
-    return text.toLowerCase()
-      .split(/\s+/) 
-      .filter(word => !this.stopwords.has(word))
+    const cleanedText = this.cleanText(text);
+    return cleanedText
+      .split(/\s+/)
+      .filter(word => 
+        word.length > 0 && 
+        !this.stopwords.has(word.toLowerCase())
+      )
       .reduce((counts, word) => {
-        counts[word] = (counts[word] || 0) + 1;
+        const cleanWord = word.toLowerCase();
+        counts[cleanWord] = (counts[cleanWord] || 0) + 1;
         return counts;
       }, {} as Record<string, number>);
+  }
+
+  private cleanText(text: string): string {
+    return text
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '') // Remove punctuation
+      .replace(/\s{2,}/g, ' ') // Remove extra spaces
+      .trim();
   }
 
   private async incrementPostCounts(subredditName: string, counts: Record<string, number>): Promise<void> {
