@@ -43,14 +43,18 @@ class App {
           this.state.foundWords.add(word);
           showToast(`Found "${word}"!`);
           updateFoundWordsList();
+        } else {
+          showToast(`"${word}" is not one of today's words!`);
         }
         wordInput.value = '';
       }
     };
 
+    // Add event listeners
     submitButton.addEventListener('click', submitWord);
-    wordInput.addEventListener('keyup', (e) => {
+    wordInput.addEventListener('keydown', (e) => {  // Changed from keyup to keydown
       if (e.key === 'Enter') {
+        e.preventDefault();  // Prevent default form submission
         submitWord();
       }
     });
@@ -114,6 +118,11 @@ class App {
         if (e.key === 'Backspace') {
           handleBackspace();
           animateTile(backspaceTile);
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submitWord();
           return;
         }
 
