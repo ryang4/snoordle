@@ -52,7 +52,7 @@ class App {
       if (word) {
         if (this.state.foundWords.has(word)) {
           showToast(`"${word}" has already been found!`);
-        } else if (canMakeWord(word, this.state.words[this.state.currentRound - 1])) {
+        } else if (canMakeWord(word, this.state.words[this.state.currentRound - 1].word)) {
           this.state.foundWords.add(word);
           showToast(`Found "${word}"!`);
         } else {
@@ -175,15 +175,15 @@ class App {
         return;
       }
 
-      // Get current word and create its letter grid
-      const currentWord = this.state.words[this.state.currentRound];
-      if (!currentWord) {
+      // Get current word object and create its letter grid
+      const currentWordObj = this.state.words[this.state.currentRound];
+      if (!currentWordObj) {
         endGame();
         return;
       }
 
-      // Create letter map from single word
-      const letters = [...currentWord.toUpperCase()];
+      // Create letter map from word
+      const letters = [...currentWordObj.word.toUpperCase()];
       const letterMap = new Map();
       letters.forEach(letter => {
         letterMap.set(letter, (letterMap.get(letter) || 0) + 1);
@@ -215,26 +215,23 @@ class App {
     };
 
     const showRoundSummary = () => {
-      const currentWord = this.state.words[this.state.currentRound - 1];
+      const currentWordObj = this.state.words[this.state.currentRound - 1];
       const roundWords = Array.from(this.state.foundWords)
-        .filter(word => canMakeWord(word, currentWord));
+        .filter(word => canMakeWord(word, currentWordObj.word));
 
       // Clear input and grid
       wordInput.value = '';
       letterGrid.innerHTML = '';
       
-      // Create and add summary div
       const summaryDiv = document.createElement('div');
       summaryDiv.classList.add('round-summary');
       
-      // Only show word count if we have it
-      const wordCountText = this.state.wordCounts && this.state.wordCounts[currentWord] 
-        ? `was used ${this.state.wordCounts[currentWord]} times in the past day`
-        : '';
-
       summaryDiv.innerHTML = `
         <h2>Round ${this.state.currentRound} Complete!</h2>
-        <p class="source-word"><strong>${currentWord.toUpperCase()}</strong> ${wordCountText}</p>
+        <p class="source-word">
+          <strong>${currentWordObj.word.toUpperCase()}</strong> 
+          was used ${currentWordObj.score} times in the past day
+        </p>
         <p>You found ${roundWords.length} words:</p>
         <div class="found-words-list">
           ${roundWords.join(', ') || 'No words found'}
@@ -293,13 +290,13 @@ class App {
         console.log('Received message:', message); // Add logging
 
         if (message.type === 'initialData') {
-          const { username, words, postId, wordCounts } = message.data;
+          const { username, words, postId } = message.data;
+          
           this.state = {
             ...this.state,
             username,
-            words,
-            postId,
-            wordCounts  // Store word counts in state
+            words, // Keep the full array of {word, score} objects
+            postId
           };
         }
       }

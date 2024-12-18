@@ -2,7 +2,7 @@
   --primary-color: #6b7280;
   --background-color: #f3f4f6;
   --text-color: #374151;
-  --accent-color: black;
+  --accent-color: orange;
   --border-radius: 6px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -135,6 +135,21 @@ pre {
     "letter letter letter letter letter backspace";
   box-sizing: border-box;
   position: relative;  /* Add this */
+  width: 100% !important;
+  max-width: 500px !important;
+  margin: 1rem auto !important;
+  position: relative !important;
+  display: grid;
+  flex: 1;
+  box-sizing: border-box;
+}
+
+/* Override letter-grid styles when containing round-summary */
+.letter-grid:has(.round-summary) {
+  display: block;
+  padding: 0;
+  margin: 0;
+  max-width: none;
 }
 
 .tile {
@@ -273,14 +288,30 @@ pre {
   min-width: auto;
   margin: 0 auto;
   max-width: 500px;
+  width: 100% !important;
+  max-width: 500px !important;
+  margin: 1rem auto !important;
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  box-sizing: border-box;
+  padding: 2rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .found-words-list {
+  width: 100%;
   margin: 1rem 0;
   padding: 0 1rem;
-  font-size: 1.1rem;
-  line-height: 1.5;
   word-wrap: break-word;
+  line-height: 1.5;
 }
 
 .instructions-screen {
@@ -319,22 +350,19 @@ pre {
 
 .round-summary {
   text-align: center;
-  padding: 2rem;
   background: white;
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
   width: 100%;
-  max-width: 500px;  /* Match letter grid max-width */
+  max-width: 500px;
+  margin: 1rem auto;
+  padding: 2rem;
   box-sizing: border-box;
-  min-height: 100%;
-  margin: 0 auto;    /* Center like letter grid */
   display: flex;
   flex-direction: column;
   justify-content: center;
-  position: static;  /* Remove absolute positioning */
-  min-width: auto;
-  max-width: 500px;
-  width: 100%;
+  align-items: center;
+  position: relative;
 }
 
 .round-summary .source-word {
@@ -350,4 +378,6 @@ pre {
 
 .round-summary button {
   margin-top: 1.5rem;
+  width: 100%;
+  max-width: 300px;
 }

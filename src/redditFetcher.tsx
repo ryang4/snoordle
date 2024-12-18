@@ -21,13 +21,20 @@ export class RedditFetcher {
 
   // getTopWords returns the top words used in the subreddit.
   // The count parameter specifies how many words to return. If empty, current subreddit is used.
-  async getTopWords(count: number = 20):  Promise<string[]> {
+  async getTopWords(count: number = 20):  Promise<{word: string, score: number}[]> {
     await this.updateWordCounts();
     const subreddit = await this.context.reddit.getCurrentSubreddit();
     const wordsKey = `words:${subreddit.name}`;
 
-    const topWords = await this.context.redis.zRange(wordsKey, 0, count - 1, { by: 'rank', reverse: true });
-    return topWords.map(entry => entry.member);
+    const topWords = await this.context.redis.zRange(wordsKey, 0, count - 1, { 
+      by: 'rank',
+      reverse: true,
+    });
+    
+    return topWords.map(entry => ({
+      word: entry.member,
+      score: entry.score
+    }));
   }
 
   async updateWordCounts(): Promise<void> {

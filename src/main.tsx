@@ -11,7 +11,7 @@ type WebViewMessage =
       data: { 
         username: string;
         postId: string;
-        words: string[];
+        words: Array<{word: string, score: number}>;
         debugData: any[]; // Add debug data to initial payload
       };
     }
@@ -87,12 +87,13 @@ Devvit.addCustomPostType({
     // When the button is clicked, send initial data to web view and show it
     const onShowWebviewClick = () => {
       setWebviewVisible(true);
+      
       context.ui.webView.postMessage('myWebView', {
         type: 'initialData',
         data: {
-          username: username,
-          words: topWords,
-          postId: postId,
+          username,
+          words: topWords, // topWords is already an array of {word, score} objects
+          postId,
         },
       });
     };
