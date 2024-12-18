@@ -12,8 +12,15 @@
   <body>
     <div id="instructions-screen" class="instructions-screen">
       <h2>How to Play</h2>
-      <p>Make as many words as you can using the letters shown. You have 10 seconds for each word!</p>
+      <p>Make as many words as you can using the letters shown. You have 10 seconds per round!</p>
       <p>The letters will change 5 times, giving you different words to work with.</p>
+      <h3>Scoring:</h3>
+      <ul>
+        <li>Each word earns points equal to its length</li>
+        <li>Finding the source word multiplies its score by 10</li>
+        <li>After all rounds, create a sentence using your found words</li>
+        <li>Each word from your collection used in the sentence earns 3 bonus points</li>
+      </ul>
       <button id="start-game">Start Game</button>
     </div>
     <div id="game-container" style="display: none;">
@@ -26,6 +33,16 @@
           <!-- Letter tiles will be dynamically inserted here -->
         </div>
         <button id="submit-word">Submit Word</button>
+      </div>
+      <div id="sentence-phase">
+        <h2>Create a Sentence</h2>
+        <p>Use words you found to create a sentence. Each word used earns 3 bonus points!</p>
+        <div class="sentence-container">
+          <textarea id="sentence-input" 
+            placeholder="Type your sentence here using words you found..."></textarea>
+          <button id="submit-sentence">Submit Sentence</button>
+        </div>
+        <div class="found-words-reference"></div>
       </div>
       <div id="summary-container"></div>
       <div id="toast" class="toast"></div>

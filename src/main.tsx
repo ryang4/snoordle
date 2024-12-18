@@ -107,7 +107,7 @@ Devvit.addCustomPostType({
           alignment="middle center"
         >
           <text size="xlarge" weight="bold">
-            Example App
+            Get Ready to Play Snoordle!
           </text>
           <spacer />
           <vstack alignment="start middle">

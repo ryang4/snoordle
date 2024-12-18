@@ -222,7 +222,7 @@ class App {
     const endGame = () => {
       this.state.isGameActive = false;
       clearInterval(this.state.timerInterval);
-      showGameResults();
+      showSentencePhase(); // Show sentence phase before final results
     };
 
     const hideGameElements = () => {
@@ -236,6 +236,7 @@ class App {
     };
 
     const showGameResults = () => {
+      document.querySelector('#sentence-phase').style.display = 'none';
       hideGameElements();
       
       const summaryContainer = document.querySelector('#summary-container');
@@ -273,6 +274,7 @@ class App {
       resultsDiv.innerHTML = `
         <h2>Game Over!</h2>
         <h3>Final Score: ${this.state.totalScore} points!</h3>
+        <p class="bonus-note">(Including sentence bonus points)</p>
         <div class="round-breakdown">
           ${roundSummaries}
         </div>
@@ -388,6 +390,70 @@ class App {
         }
       }
     });
+
+    const showSentencePhase = () => {
+      hideGameElements();
+      letterGrid.innerHTML = ''; // Clear the letter grid
+      
+      const sentencePhase = document.querySelector('#sentence-phase');
+      const summaryContainer = document.querySelector('#summary-container');
+      summaryContainer.innerHTML = '';
+      sentencePhase.style.display = 'flex';
+      
+      // Group words by round
+      const wordsByRound = new Map();
+      this.state.allFoundWords.forEach(word => {
+        const roundIndex = this.state.roundWords.get(word);
+        if (!wordsByRound.has(roundIndex)) {
+          wordsByRound.set(roundIndex, new Set());
+        }
+        wordsByRound.get(roundIndex).add(word);
+      });
+      
+      // Create round columns
+      const foundWordsRef = sentencePhase.querySelector('.found-words-reference');
+      foundWordsRef.innerHTML = '';
+      
+      // For each round, create a column
+      for (let i = 0; i < this.state.maxRounds; i++) {
+        const roundWords = Array.from(wordsByRound.get(i) || []).sort();
+        const sourceWord = this.state.words[i].word.toUpperCase();
+        
+        const column = document.createElement('div');
+        column.classList.add('round-words-column');
+        column.innerHTML = `
+          <h4>Round ${i + 1}: ${sourceWord}</h4>
+          <div class="found-words-list">
+            ${roundWords.map(word => `<span class="found-word">${word}</span>`).join(' ')}
+          </div>
+        `;
+        foundWordsRef.appendChild(column);
+      }
+      
+      // Handle sentence submission
+      const submitButton = document.querySelector('#submit-sentence');
+      submitButton.addEventListener('click', () => {
+        const sentence = document.querySelector('#sentence-input').value.toLowerCase();
+        const words = sentence.split(/\s+/);
+        let bonusPoints = 0;
+        
+        // Calculate bonus points for using found words
+        const usedWords = new Set();
+        words.forEach(word => {
+          if (this.state.allFoundWords.has(word) && !usedWords.has(word)) {
+            bonusPoints += 3;
+            usedWords.add(word);
+            showToast(`+3 points for using "${word}"!`);
+          }
+        });
+        
+        this.state.totalScore += bonusPoints;
+        
+        // Hide sentence phase and show final results
+        sentencePhase.style.display = 'none';
+        showGameResults();
+      });
+    };
   }
 }
 
