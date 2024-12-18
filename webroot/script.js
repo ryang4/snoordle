@@ -63,16 +63,11 @@ class App {
     };
 
     const canMakeWord = (attempt, sourceWord) => {
-      const sourceLetters = {};
-      [...sourceWord.toLowerCase()].forEach(char => {
-        sourceLetters[char] = (sourceLetters[char] || 0) + 1;
-      });
+      // Convert both words to lowercase
+      const sourceLetters = new Set(sourceWord.toLowerCase().split(''));
       
-      for (const char of attempt) {
-        if (!sourceLetters[char]) return false;
-        sourceLetters[char]--;
-      }
-      return true;
+      // Check if each letter in attempt exists in source word
+      return attempt.toLowerCase().split('').every(letter => sourceLetters.has(letter));
     };
 
     // Add event listeners
@@ -219,6 +214,46 @@ class App {
       letterGrid.appendChild(resultsDiv);
     };
 
+    const showRoundSummary = () => {
+      const currentWord = this.state.words[this.state.currentRound - 1];
+      const roundWords = Array.from(this.state.foundWords)
+        .filter(word => canMakeWord(word, currentWord));
+
+      // Clear input and grid
+      wordInput.value = '';
+      letterGrid.innerHTML = '';
+      
+      // Create and add summary div
+      const summaryDiv = document.createElement('div');
+      summaryDiv.classList.add('round-summary');
+      
+      // Only show word count if we have it
+      const wordCountText = this.state.wordCounts && this.state.wordCounts[currentWord] 
+        ? `was used ${this.state.wordCounts[currentWord]} times in the past day`
+        : '';
+
+      summaryDiv.innerHTML = `
+        <h2>Round ${this.state.currentRound} Complete!</h2>
+        <p class="source-word"><strong>${currentWord.toUpperCase()}</strong> ${wordCountText}</p>
+        <p>You found ${roundWords.length} words:</p>
+        <div class="found-words-list">
+          ${roundWords.join(', ') || 'No words found'}
+        </div>
+        <button id="next-round-btn">Next Round</button>
+      `;
+      
+      letterGrid.appendChild(summaryDiv);
+      
+      // Clear previous round's found words
+      this.state.foundWords.clear();
+      
+      // Add event listener to the next round button
+      const nextButton = document.querySelector('#next-round-btn');
+      if (nextButton) {
+        nextButton.addEventListener('click', startNextRound);
+      }
+    };
+
     const startTimer = () => {
       clearInterval(this.state.timerInterval);
       this.state.timeLeft = 10;
@@ -230,7 +265,8 @@ class App {
         
         if (this.state.timeLeft <= 0) {
           clearInterval(this.state.timerInterval);
-          startNextRound();
+          wordInput.value = '';
+          showRoundSummary();  // Show summary instead of immediately starting next round
         }
       }, 1000);
     };
@@ -257,11 +293,14 @@ class App {
         console.log('Received message:', message); // Add logging
 
         if (message.type === 'initialData') {
-          const { username, words, postId } = message.data;
-          this.state.words = words.slice(0, this.state.maxRounds);
-          this.state.username = username;
-          this.state.postId = postId;
-          // Game will start when user clicks start button
+          const { username, words, postId, wordCounts } = message.data;
+          this.state = {
+            ...this.state,
+            username,
+            words,
+            postId,
+            wordCounts  // Store word counts in state
+          };
         }
       }
     });

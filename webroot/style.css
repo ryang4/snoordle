@@ -2,7 +2,7 @@
   --primary-color: #6b7280;
   --background-color: #f3f4f6;
   --text-color: #374151;
-  --accent-color: yellow;
+  --accent-color: black;
   --border-radius: 6px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -133,6 +133,8 @@ pre {
   padding: 0.75rem;  /* Reduced padding */
   grid-template-areas: 
     "letter letter letter letter letter backspace";
+  box-sizing: border-box;
+  position: relative;  /* Add this */
 }
 
 .tile {
@@ -262,13 +264,23 @@ pre {
   box-shadow: var(--shadow);
   width: 100%;
   box-sizing: border-box;
+  min-height: 100%;
+  margin: -0.75rem;  /* Compensate for letter-grid padding */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: static;  /* Remove absolute positioning */
+  min-width: auto;
+  margin: 0 auto;
+  max-width: 500px;
 }
 
 .found-words-list {
-  margin-top: 1rem;
+  margin: 1rem 0;
+  padding: 0 1rem;
   font-size: 1.1rem;
   line-height: 1.5;
-  color: var(--text-color);
+  word-wrap: break-word;
 }
 
 .instructions-screen {
@@ -303,4 +315,39 @@ pre {
   align-items: center;
   width: 100%;
   gap: 1rem;
+}
+
+.round-summary {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 500px;  /* Match letter grid max-width */
+  box-sizing: border-box;
+  min-height: 100%;
+  margin: 0 auto;    /* Center like letter grid */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: static;  /* Remove absolute positioning */
+  min-width: auto;
+  max-width: 500px;
+  width: 100%;
+}
+
+.round-summary .source-word {
+  font-size: 1.2rem;
+  margin: 1rem 0;
+  color: var(--accent-color);
+}
+
+.round-summary .source-word strong {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.round-summary button {
+  margin-top: 1.5rem;
 }
