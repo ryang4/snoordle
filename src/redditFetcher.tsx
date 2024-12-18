@@ -144,14 +144,33 @@ export class RedditFetcher {
     const postKey = `posts:${subredditName}:${postId}`;
     const counts = await this.context.redis.get(postKey);
 
-    if (counts) {
+    if (!counts) {
+      console.log('No counts found for post:', postKey);
+      return;
+    }
+
+    try {
       const wordCounts = JSON.parse(counts) as Record<string, number>;
       const wordsKey = `words:${subredditName}`;
       
+      console.log('Parsed word counts:', wordCounts);
+      
       for (const [word, count] of Object.entries(wordCounts)) {
-        await this.context.redis.zIncrBy(wordsKey, word, -count);
+        const numericCount = Number(count);
+        if (isNaN(numericCount)) {
+          console.error('Invalid count for word:', word, count);
+          continue;
+        }
+        
+        console.log(`Decrementing '${word}' by ${numericCount}`);
+        await this.context.redis.zIncrBy(wordsKey, word, numericCount * -1);
       }
+      
       await this.context.redis.del(postKey);
+    } catch (error) {
+      console.error('Error processing counts:', error);
+      console.error('Raw counts data:', counts);
+      throw error;
     }
-  }
+}
 }
