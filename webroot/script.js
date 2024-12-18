@@ -6,6 +6,8 @@ class App {
       postId: '',
       letterMap: new Map(),
       foundWords: new Set(),
+      timeLeft: 10,
+      timerInterval: null
     };
 
     const letterGrid = document.querySelector('#letter-grid');
@@ -14,6 +16,7 @@ class App {
     const foundWordsList = document.querySelector('#found-words-list');
     const wordCountElement = document.querySelector('#word-count');
     const toast = document.querySelector('#toast');
+    const timerElement = document.querySelector('#timer');
 
     const showToast = (message) => {
       toast.textContent = message;
@@ -141,6 +144,28 @@ class App {
       };
     };
 
+    const startTimer = () => {
+      clearInterval(this.state.timerInterval);
+      this.state.timeLeft = 10;
+      updateTimerDisplay();
+      
+      this.state.timerInterval = setInterval(() => {
+        this.state.timeLeft--;
+        updateTimerDisplay();
+        
+        if (this.state.timeLeft <= 0) {
+          clearInterval(this.state.timerInterval);
+          // We'll add round transition logic later
+        }
+      }, 1000);
+    };
+
+    const updateTimerDisplay = () => {
+      if (timerElement) {
+        timerElement.textContent = this.state.timeLeft;
+      }
+    };
+
     window.addEventListener('message', (ev) => {
       const { type, data } = ev.data;
 
@@ -159,6 +184,8 @@ class App {
             words,
             postId
           };
+
+          startTimer();  // Start the timer when game starts
         }
       }
     });
