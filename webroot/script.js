@@ -7,7 +7,11 @@ class App {
       letterMap: new Map(),
       foundWords: new Set(),
       timeLeft: 10,
-      timerInterval: null
+      timerInterval: null,
+      currentRound: 0,
+      maxRounds: 5,
+      isGameActive: true,
+      wordsByRound: [], // Will store words for each round
     };
 
     const letterGrid = document.querySelector('#letter-grid');
@@ -38,19 +42,33 @@ class App {
     };
 
     const submitWord = () => {
+      if (!this.state.isGameActive) return;
+      
       const word = wordInput.value.toLowerCase();
       if (word) {
         if (this.state.foundWords.has(word)) {
           showToast(`"${word}" has already been found!`);
-        } else if (this.state.words.includes(word)) {
+        } else if (canMakeWord(word, this.state.words[this.state.currentRound - 1])) {
           this.state.foundWords.add(word);
           showToast(`Found "${word}"!`);
-          updateFoundWordsList();
         } else {
-          showToast(`"${word}" is not one of today's words!`);
+          showToast(`Can't make "${word}" from the current letters!`);
         }
         wordInput.value = '';
       }
+    };
+
+    const canMakeWord = (attempt, sourceWord) => {
+      const sourceLetters = {};
+      [...sourceWord.toLowerCase()].forEach(char => {
+        sourceLetters[char] = (sourceLetters[char] || 0) + 1;
+      });
+      
+      for (const char of attempt) {
+        if (!sourceLetters[char]) return false;
+        sourceLetters[char]--;
+      }
+      return true;
     };
 
     // Add event listeners
@@ -144,6 +162,49 @@ class App {
       };
     };
 
+    const startNextRound = () => {
+      if (this.state.currentRound >= this.state.maxRounds) {
+        endGame();
+        return;
+      }
+
+      // Get current word and create its letter grid
+      const currentWord = this.state.words[this.state.currentRound];
+      if (!currentWord) {
+        endGame();
+        return;
+      }
+
+      // Create letter map from single word
+      const letters = [...currentWord.toUpperCase()];
+      const letterMap = new Map();
+      letters.forEach(letter => {
+        letterMap.set(letter, (letterMap.get(letter) || 0) + 1);
+      });
+
+      createLetterGrid(letterMap);
+      this.state.currentRound++;
+      startTimer();
+    };
+
+    const endGame = () => {
+      this.state.isGameActive = false;
+      clearInterval(this.state.timerInterval);
+      showGameResults();
+    };
+
+    const showGameResults = () => {
+      letterGrid.innerHTML = `
+        <div class="game-results">
+          <h2>Game Over!</h2>
+          <p>You found ${this.state.foundWords.size} words:</p>
+          <div class="found-words-list">
+            ${Array.from(this.state.foundWords).join(', ')}
+          </div>
+        </div>
+      `;
+    };
+
     const startTimer = () => {
       clearInterval(this.state.timerInterval);
       this.state.timeLeft = 10;
@@ -155,7 +216,7 @@ class App {
         
         if (this.state.timeLeft <= 0) {
           clearInterval(this.state.timerInterval);
-          // We'll add round transition logic later
+          startNextRound();
         }
       }, 1000);
     };
@@ -175,17 +236,12 @@ class App {
 
         if (message.type === 'initialData') {
           const { username, words, postId } = message.data;
-          processLetters(words);
-          createLetterGrid(this.state.letterMap);
-
-          this.state = {
-            ...this.state,
-            username,
-            words,
-            postId
-          };
-
-          startTimer();  // Start the timer when game starts
+          this.state.words = words.slice(0, this.state.maxRounds);
+          this.state.username = username;
+          this.state.postId = postId;
+          
+          // Start first round
+          startNextRound();
         }
       }
     });
