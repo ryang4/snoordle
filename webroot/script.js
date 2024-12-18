@@ -6,13 +6,16 @@ class App {
       postId: '',
       letterMap: new Map(),
       foundWords: new Set(),
+      allFoundWords: new Set(), // Add this to track all words across rounds
       timeLeft: 10,
       timerInterval: null,
       currentRound: 0,
       maxRounds: 5,
       isGameActive: true,
       wordsByRound: [], // Will store words for each round
-      keyboardListener: null
+      keyboardListener: null,
+      roundWords: new Map(), // Add this to track which words were found in which rounds
+      totalScore: 0
     };
 
     const letterGrid = document.querySelector('#letter-grid');
@@ -54,7 +57,17 @@ class App {
           showToast(`"${word}" has already been found!`);
         } else if (canMakeWord(word, this.state.words[this.state.currentRound - 1].word)) {
           this.state.foundWords.add(word);
-          showToast(`Found "${word}"!`);
+          this.state.allFoundWords.add(word); // Add to overall collection
+          
+          // Store which round this word was found in
+          this.state.roundWords.set(word, this.state.currentRound - 1);
+          
+          // Calculate score for this word
+          const currentSourceWord = this.state.words[this.state.currentRound - 1].word.toLowerCase();
+          const wordScore = calculateWordScore(word, currentSourceWord);
+          this.state.totalScore += wordScore;
+          
+          showToast(`Found "${word}"! +${wordScore} points`);
         } else {
           showToast(`Can't make "${word}" from the current letters!`);
         }
@@ -68,6 +81,18 @@ class App {
       
       // Check if each letter in attempt exists in source word
       return attempt.toLowerCase().split('').every(letter => sourceLetters.has(letter));
+    };
+
+    const calculateWordScore = (word, sourceWord) => {
+      // Base score is length of word
+      let score = word.length;
+      
+      // If word matches the source word, multiply by 10
+      if (word.toLowerCase() === sourceWord.toLowerCase()) {
+        score *= 10;
+      }
+      
+      return score;
     };
 
     // Add event listeners
@@ -200,28 +225,85 @@ class App {
       showGameResults();
     };
 
+    const hideGameElements = () => {
+      document.querySelector('#game-controls').style.display = 'none';
+      document.querySelector('.game-header').style.display = 'none';
+    };
+
+    const showGameElements = () => {
+      document.querySelector('#game-controls').style.display = 'flex';
+      document.querySelector('.game-header').style.display = 'flex';
+    };
+
     const showGameResults = () => {
-      letterGrid.innerHTML = '';  // Clear existing content
+      hideGameElements();
+      
+      const summaryContainer = document.querySelector('#summary-container');
+      summaryContainer.innerHTML = '';
+      
       const resultsDiv = document.createElement('div');
       resultsDiv.classList.add('game-results');
+    
+      // Calculate final statistics
+      const foundWords = Array.from(this.state.allFoundWords);
+      const roundWordCounts = Array(this.state.maxRounds).fill(0);
+      const roundScores = Array(this.state.maxRounds).fill(0);
+      
+      foundWords.forEach(word => {
+        const roundIndex = this.state.roundWords.get(word);
+        if (roundIndex !== undefined) {
+          roundWordCounts[roundIndex]++;
+          const sourceWord = this.state.words[roundIndex].word.toLowerCase();
+          roundScores[roundIndex] += calculateWordScore(word, sourceWord);
+        }
+      });
+
+      const sortedWords = foundWords.sort().map(word => {
+        const isTopWord = this.state.words.some(w => w.word.toLowerCase() === word.toLowerCase());
+        const roundIndex = this.state.roundWords.get(word);
+        const sourceWord = this.state.words[roundIndex].word.toLowerCase();
+        const score = calculateWordScore(word, sourceWord);
+        return `<span class="found-word ${isTopWord ? 'top-word' : ''}">${word} (${score}pts)</span>`;
+      });
+    
+      const roundSummaries = roundScores
+        .map((score, i) => `Round ${i + 1}: ${roundWordCounts[i]} words, ${score} points`)
+        .join('<br>');
+
       resultsDiv.innerHTML = `
         <h2>Game Over!</h2>
-        <p>You found ${this.state.foundWords.size} words:</p>
+        <h3>Final Score: ${this.state.totalScore} points!</h3>
+        <div class="round-breakdown">
+          ${roundSummaries}
+        </div>
+        <p>You found ${this.state.allFoundWords.size} words:</p>
         <div class="found-words-list">
-          ${Array.from(this.state.foundWords).join(', ')}
+          ${sortedWords.join(' ')}
+        </div>
+        <h3 style="margin-top: 2rem;">Today's Top Words:</h3>
+        <div class="found-words-list">
+          ${this.state.words.map(w => 
+            `<span class="found-word top-word">${w.word} (${w.score} uses)</span>`
+          ).join(' ')}
         </div>
       `;
-      letterGrid.appendChild(resultsDiv);
+      
+      summaryContainer.appendChild(resultsDiv);
     };
 
     const showRoundSummary = () => {
+      hideGameElements();
+      
       const currentWordObj = this.state.words[this.state.currentRound - 1];
       const roundWords = Array.from(this.state.foundWords)
         .filter(word => canMakeWord(word, currentWordObj.word));
 
       // Clear input and grid
       wordInput.value = '';
-      letterGrid.innerHTML = '';
+      
+      // Use summary container instead of letter grid
+      const summaryContainer = document.querySelector('#summary-container');
+      summaryContainer.innerHTML = '';
       
       const summaryDiv = document.createElement('div');
       summaryDiv.classList.add('round-summary');
@@ -239,7 +321,7 @@ class App {
         <button id="next-round-btn">Next Round</button>
       `;
       
-      letterGrid.appendChild(summaryDiv);
+      summaryContainer.appendChild(summaryDiv);
       
       // Clear previous round's found words
       this.state.foundWords.clear();
@@ -247,7 +329,11 @@ class App {
       // Add event listener to the next round button
       const nextButton = document.querySelector('#next-round-btn');
       if (nextButton) {
-        nextButton.addEventListener('click', startNextRound);
+        nextButton.addEventListener('click', () => {
+          summaryContainer.innerHTML = '';
+          showGameElements();
+          startNextRound();
+        });
       }
     };
 
@@ -277,6 +363,7 @@ class App {
     const startGame = () => {
       instructionsScreen.style.display = 'none';
       gameContainer.style.display = 'block';
+      showGameElements();
       startNextRound();
     };
 

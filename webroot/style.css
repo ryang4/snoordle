@@ -2,7 +2,7 @@
   --primary-color: #6b7280;
   --background-color: #f3f4f6;
   --text-color: #374151;
-  --accent-color: orange;
+  --accent-color: violet;
   --border-radius: 6px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -146,6 +146,15 @@ pre {
 
 /* Override letter-grid styles when containing round-summary */
 .letter-grid:has(.round-summary) {
+  display: block;
+  padding: 0;
+  margin: 0;
+  max-width: none;
+}
+
+/* Override grid styles for both round summary and game results */
+.letter-grid:has(.round-summary),
+.letter-grid:has(.game-results) {
   display: block;
   padding: 0;
   margin: 0;
@@ -304,6 +313,22 @@ pre {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.found-word {
+  display: inline-block;
+  margin: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius);
+  position: relative;
+}
+
+.found-word.top-word {
+  background-color: var(--accent-color);
+  color: white;
+  font-weight: bold;
 }
 
 .found-words-list {
@@ -380,4 +405,13 @@ pre {
   margin-top: 1.5rem;
   width: 100%;
   max-width: 300px;
+}
+
+.round-breakdown {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: var(--background-color);
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
