@@ -12,6 +12,7 @@ class App {
       maxRounds: 5,
       isGameActive: true,
       wordsByRound: [], // Will store words for each round
+      keyboardListener: null
     };
 
     const letterGrid = document.querySelector('#letter-grid');
@@ -21,6 +22,9 @@ class App {
     const wordCountElement = document.querySelector('#word-count');
     const toast = document.querySelector('#toast');
     const timerElement = document.querySelector('#timer');
+    const instructionsScreen = document.querySelector('#instructions-screen');
+    const gameContainer = document.querySelector('#game-container');
+    const startGameButton = document.querySelector('#start-game');
 
     const showToast = (message) => {
       toast.textContent = message;
@@ -134,8 +138,13 @@ class App {
       });
       letterGrid.appendChild(backspaceTile);
 
+      // Remove old keyboard listener if it exists
+      if (this.state.keyboardListener) {
+        document.removeEventListener('keydown', this.state.keyboardListener);
+      }
+
       // Add keyboard support
-      document.addEventListener('keydown', (e) => {
+      const keyboardListener = (e) => {
         if (e.key === 'Backspace') {
           handleBackspace();
           animateTile(backspaceTile);
@@ -153,7 +162,10 @@ class App {
           wordInput.value += pressedKey;
           animateTile(tile);
         }
-      });
+      };
+
+      document.addEventListener('keydown', keyboardListener);
+      this.state.keyboardListener = keyboardListener;
 
       // Animation helper
       const animateTile = (tile) => {
@@ -194,15 +206,17 @@ class App {
     };
 
     const showGameResults = () => {
-      letterGrid.innerHTML = `
-        <div class="game-results">
-          <h2>Game Over!</h2>
-          <p>You found ${this.state.foundWords.size} words:</p>
-          <div class="found-words-list">
-            ${Array.from(this.state.foundWords).join(', ')}
-          </div>
+      letterGrid.innerHTML = '';  // Clear existing content
+      const resultsDiv = document.createElement('div');
+      resultsDiv.classList.add('game-results');
+      resultsDiv.innerHTML = `
+        <h2>Game Over!</h2>
+        <p>You found ${this.state.foundWords.size} words:</p>
+        <div class="found-words-list">
+          ${Array.from(this.state.foundWords).join(', ')}
         </div>
       `;
+      letterGrid.appendChild(resultsDiv);
     };
 
     const startTimer = () => {
@@ -227,6 +241,14 @@ class App {
       }
     };
 
+    const startGame = () => {
+      instructionsScreen.style.display = 'none';
+      gameContainer.style.display = 'block';
+      startNextRound();
+    };
+
+    startGameButton.addEventListener('click', startGame);
+
     window.addEventListener('message', (ev) => {
       const { type, data } = ev.data;
 
@@ -239,9 +261,7 @@ class App {
           this.state.words = words.slice(0, this.state.maxRounds);
           this.state.username = username;
           this.state.postId = postId;
-          
-          // Start first round
-          startNextRound();
+          // Game will start when user clicks start button
         }
       }
     });
