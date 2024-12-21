@@ -18,15 +18,16 @@ type WebViewMessage =
   | {
       type: 'saveUserResults';
       data: { newCounter: number };
+    }
+  | {
+      type: 'gameComplete';
+      data: {
+        totalScore: number;
+        sentence: string;
+        foundWords: string[];
+        username: string;
+      };
     };
-  // |  {
-  //     type: 'updateWordCounts';
-  //     data: {};
-  //   }
-  // | {
-  //     type: 'sendUpdatedWords';
-  //     data: { words: string[] };
-  //   };
 
 Devvit.configure({
   redditAPI: true,
@@ -65,6 +66,17 @@ Devvit.addCustomPostType({
     // When the web view invokes `window.parent.postMessage` this function is called
     const onMessage = async (msg: WebViewMessage) => {
       switch (msg.type) {
+        case 'gameComplete':
+          try {
+            const comment = await context.reddit.submitComment({
+              postId: context.postId,
+              markdown: formatGameResult(msg.data)
+            });
+            console.log('Posted comment:', comment.id);
+          } catch (error) {
+            console.error('Error posting comment:', error);
+          }
+          break;
         case 'saveUserResults':
           break;
         // case 'updateWordCounts':
@@ -82,6 +94,16 @@ Devvit.addCustomPostType({
         default:
           throw new Error(`Unknown message type: ${msg satisfies never}`);
       }
+    };
+
+    const formatGameResult = (data: WebViewMessage['gameComplete']['data']) => {
+      const { totalScore, sentence, foundWords, username } = data;
+      return `
+u/${username}'s Snoordle Results:
+- Final Score: ${totalScore} points
+- Sentence: "${sentence}"
+- Found Words: ${foundWords.join(', ')}
+      `.trim();
     };
 
     // When the button is clicked, send initial data to web view and show it

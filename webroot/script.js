@@ -271,6 +271,25 @@ class App {
         .map((score, i) => `Round ${i + 1}: ${roundWordCounts[i]} words, ${score} points`)
         .join('<br>');
 
+      // Get the final sentence to display
+      const finalSentence = this.state.finalSentence || 'No sentence created';
+
+      // Send results to Devvit
+      window.parent.postMessage({
+        type: 'devvit-message',
+        data: {
+          message: {
+            type: 'gameComplete',
+            data: {
+              totalScore: this.state.totalScore,
+              sentence: this.state.finalSentence,
+              foundWords: Array.from(this.state.allFoundWords),
+              username: this.state.username
+            }
+          }
+        }
+      }, '*');
+
       resultsDiv.innerHTML = `
         <h2>Game Over!</h2>
         <h3>Final Score: ${this.state.totalScore} points!</h3>
@@ -278,7 +297,9 @@ class App {
         <div class="round-breakdown">
           ${roundSummaries}
         </div>
-        <p>You found ${this.state.allFoundWords.size} words:</p>
+        <h3 style="margin-top: 1rem;">Your Final Sentence:</h3>
+        <p class="final-sentence">${finalSentence}</p>
+        <p style="margin-top: 2rem;">You found ${this.state.allFoundWords.size} words:</p>
         <div class="found-words-list">
           ${sortedWords.join(' ')}
         </div>
@@ -434,11 +455,18 @@ class App {
       const submitButton = document.querySelector('#submit-sentence');
       submitButton.addEventListener('click', () => {
         const sentence = document.querySelector('#sentence-input').value.toLowerCase();
-        const words = sentence.split(/\s+/);
+        const words = sentence.split(/\s+/).filter(word => word.length > 0); // Filter out empty strings
+        
+        // Check sentence length
+        if (words.length > 20) {
+          showToast('Sentence cannot be longer than 20 words!');
+          return;
+        }
+
         let bonusPoints = 0;
+        const usedWords = new Set();
         
         // Calculate bonus points for using found words
-        const usedWords = new Set();
         words.forEach(word => {
           if (this.state.allFoundWords.has(word) && !usedWords.has(word)) {
             bonusPoints += 3;
@@ -448,6 +476,9 @@ class App {
         });
         
         this.state.totalScore += bonusPoints;
+        
+        // Store the sentence for display in results
+        this.state.finalSentence = sentence;
         
         // Hide sentence phase and show final results
         sentencePhase.style.display = 'none';

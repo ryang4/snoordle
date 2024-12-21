@@ -455,6 +455,7 @@ pre {
 #sentence-input {
   width: 100%;
   min-height: 100px;
+  max-height: 200px; /* Add max height */
   padding: 1rem;
   font-size: 1.1rem;
   border: 2px solid var(--primary-color);
@@ -462,6 +463,9 @@ pre {
   background-color: white;
   color: var(--text-color);
   resize: vertical;
+  box-sizing: border-box; /* Add box-sizing */
+  margin: 0; /* Reset margin */
+  overflow-y: auto; /* Add scrolling */
 }
 
 .found-words-reference {
@@ -482,4 +486,15 @@ pre {
   padding: 0.75rem;
   background: var(--background-color);
   border-radius: var(--border-radius);
+}
+
+.final-sentence {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  background: var(--background-color);
+  border-radius: var(--border-radius);
+  font-style: italic;
+  color: var(--text-color);
 }
