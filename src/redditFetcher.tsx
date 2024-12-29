@@ -1,4 +1,4 @@
-import { Context, Post } from '@devvit/public-api';
+import { Context, JobContext } from '@devvit/public-api';
 
 export class RedditFetcher {
   private readonly stopwords = new Set([
@@ -17,21 +17,18 @@ export class RedditFetcher {
     'these', 'give', 'day', 'most', 'us'
   ]);
 
-  private readonly GLOBAL_MODE_KEY = 'snoordle:globalMode';
+  private readonly USE_GLOBAL = 'true';
 
-  constructor(private readonly context: Context) {}
+  constructor(private readonly context: Context | JobContext) {}
 
   // getTopWords returns the top words used in the subreddit.
   // The count parameter specifies how many words to return. If empty, current subreddit is used.
   async getTopWords(count: number = 20): Promise<{word: string, score: number}[]> {
-    const isGlobal = await this.isGlobalMode();
-    const source = isGlobal ? 'all' : await this.context.reddit.getCurrentSubreddit();
+    const source = this.USE_GLOBAL ? 'all' : await this.context.reddit.getCurrentSubreddit();
     const subredditName = source === 'all' ? 'all' : source.name;
-    
-    await this.cleanupRedis(subredditName);
-    await this.updateWordCounts(subredditName);
     const wordsKey = `words:${subredditName}`;
 
+    // Just fetch the words without updating
     const topWords = await this.context.redis.zRange(wordsKey, 0, count - 1, { 
       by: 'rank',
       reverse: true,
@@ -44,11 +41,10 @@ export class RedditFetcher {
   }
 
   async updateWordCounts(source: string): Promise<void> {
-    // Use Reddit's search API to get top posts
-    const posts = await this.context.reddit.search({
-      subreddit: source,
-      sort: 'top',
-      time: 'day',
+    
+    const posts = await this.context.reddit.getTopPosts({
+      subredditName: source,
+      timeframe: 'day',
       limit: 25
     });
 
@@ -56,31 +52,9 @@ export class RedditFetcher {
     for await (const post of posts) {
       if (post.authorName !== 'snoordle-v2') {
         currentPostIds.add(post.id);
-      }
-    }
-
-    await this.removeExpiredPosts(source, currentPostIds);
-
-    for await (const post of posts) {
-      if (post.authorName !== 'snoordle-v2') {
+        // Process each post immediately
         await this.processPost(source, post);
       }
-    }
-  }
-  
-  private async removeExpiredPosts(subredditName: string, currentPostIds: Set<string>): Promise<void> {
-    const activePostsKey = `posts:${subredditName}:active`;
-    const activePosts = await this.context.redis.zRange(activePostsKey, 0, -1);
-    
-    // Find posts to remove (in active but not in current)
-    const postsToRemove = activePosts.filter(post => 
-      !currentPostIds.has(post.member)
-    );
-  
-    // Remove expired posts and update counts
-    for (const { member: postId } of postsToRemove) {
-      await this.decrementPostCounts(subredditName, postId);
-      await this.context.redis.zRem(activePostsKey, [postId]);
     }
   }
 
@@ -157,85 +131,32 @@ export class RedditFetcher {
     }
   }
 
-  private async decrementPostCounts(subredditName: string, postId: string): Promise<void> {
-    const postKey = `posts:${subredditName}:${postId}`;
-    const counts = await this.context.redis.get(postKey);
-
-    if (!counts) {
-      console.log('No counts found for post:', postKey);
-      return;
-    }
-
-    try {
-      const wordCounts = JSON.parse(counts) as Record<string, number>;
-      const wordsKey = `words:${subredditName}`;
-      
-      console.log('Parsed word counts:', wordCounts);
-      
-      for (const [word, count] of Object.entries(wordCounts)) {
-        const numericCount = Number(count);
-        if (isNaN(numericCount)) {
-          console.error('Invalid count for word:', word, count);
-          continue;
-        }
-        
-        console.log(`Decrementing '${word}' by ${numericCount}`);
-        await this.context.redis.zIncrBy(wordsKey, word, numericCount * -1);
-      }
-      
-      await this.context.redis.del(postKey);
-    } catch (error) {
-      console.error('Error processing counts:', error);
-      console.error('Raw counts data:', counts);
-      throw error;
-    }
-}
-
   private async cleanupRedis(subredditName: string): Promise<void> {
-    // Get all Redis keys for this subreddit
-    const keys = await this.context.redis.keys(`*${subredditName}*`);
+    await this.context.redis.del(`words:${subredditName}`);
     
-    // Get current timestamp
-    const now = Date.now();
-    const oneDayAgo = now - (24 * 60 * 60 * 1000);
+    // Use zScan to find all post keys
+    const activePostsKey = `posts:${subredditName}:active`;
+    const posts = await this.context.redis.zRange(activePostsKey, 0, -1);
     
-    for (const key of keys) {
-      if (key.startsWith(`posts:${subredditName}:active`)) {
-        // Clean up old posts from active set
-        const posts = await this.context.redis.zRange(key, 0, -1, { withScores: true });
-        const toRemove = posts.filter(post => post.score < oneDayAgo).map(post => post.member);
-        
-        if (toRemove.length > 0) {
-          await this.context.redis.zRem(key, toRemove);
-          
-          // Clean up associated post data
-          for (const postId of toRemove) {
-            await this.decrementPostCounts(subredditName, postId);
-            await this.context.redis.del(`posts:${subredditName}:${postId}`);
-          }
-        }
-      }
+    // Delete each post's data
+    for (const post of posts) {
+      await this.context.redis.del(`posts:${subredditName}:${post.member}`);
     }
     
-    // Reset word counts if they're older than a day
-    const lastUpdateKey = `lastUpdate:${subredditName}`;
-    const lastUpdate = await this.context.redis.get(lastUpdateKey);
-    
-    if (!lastUpdate || parseInt(lastUpdate) < oneDayAgo) {
-      await this.context.redis.del(`words:${subredditName}`);
-      await this.context.redis.set(lastUpdateKey, now.toString());
+    await this.context.redis.del(activePostsKey);
+    await this.context.redis.del(`lastUpdate:${subredditName}`);
+  }
+
+  async refreshAllWords(): Promise<void> {
+    // Clear and refresh r/all words
+    await this.cleanupRedis('all');
+    await this.updateWordCounts('all');
+
+    // Clear and refresh current subreddit words if not in global mode
+    // if (this.USE_GLOBAL !== 'true') {
+      const currentSub = await this.context.reddit.getCurrentSubreddit();
+      await this.cleanupRedis(currentSub.name);
+      await this.updateWordCounts(currentSub.name);
     }
-  }
-
-  async toggleGlobalMode(): Promise<boolean> {
-    const currentMode = await this.context.redis.get(this.GLOBAL_MODE_KEY);
-    const newMode = currentMode !== 'true';
-    await this.context.redis.set(this.GLOBAL_MODE_KEY, newMode.toString());
-    return newMode;
-  }
-
-  private async isGlobalMode(): Promise<boolean> {
-    const mode = await this.context.redis.get(this.GLOBAL_MODE_KEY);
-    return mode === 'true';
-  }
+  // }
 }

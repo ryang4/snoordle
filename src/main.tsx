@@ -1,9 +1,6 @@
 import './createPost.js';
 import { RedditFetcher } from './redditFetcher.js';
-import { useAsync } from '@devvit/public-api';
-import { useEffect, useState } from '@devvit/public-api';
-
-import { Devvit, useState } from '@devvit/public-api';
+import { Devvit, useState, Scheduler, JobContext } from '@devvit/public-api';
 
 // Defines the messages that are exchanged between Devvit and Web View
 type WebViewMessage =
@@ -58,21 +55,14 @@ Devvit.addCustomPostType({
     // Create a reactive state for web view visibility
     const [webviewVisible, setWebviewVisible] = useState(false);
 
-    const [isGlobalMode, setIsGlobalMode] = useState(false);
-
-    useEffect(async () => {
-      const mode = await fetcher.isGlobalMode();
-      setIsGlobalMode(mode);
-    }, []);
-
     // When the web view invokes `window.parent.postMessage` this function is called
     const onMessage = async (msg: WebViewMessage) => {
       switch (msg.type) {
         case 'gameComplete':
           try {
             const comment = await context.reddit.submitComment({
-              postId: context.postId,
-              markdown: formatGameResult(msg.data)
+              id: context.postId ?? '',
+              text: formatGameResult(msg.data)
             });
             console.log('Posted comment:', comment.id);
           } catch (error) {
@@ -98,7 +88,7 @@ Devvit.addCustomPostType({
       }
     };
 
-    const formatGameResult = (data: WebViewMessage['gameComplete']['data']) => {
+    const formatGameResult = (data: Extract<WebViewMessage, { type: 'gameComplete' }>['data']) => {
       const { totalScore, sentence, foundWords, username } = data;
       return `
 u/${username}'s Snoordle Results:
@@ -151,14 +141,6 @@ u/${username}'s Snoordle Results:
             </hstack> */}
           </vstack>
           <spacer />
-          <button 
-            onPress={async () => {
-              const newMode = await fetcher.toggleGlobalMode();
-              setIsGlobalMode(newMode);
-            }}
-          >
-            {isGlobalMode ? 'Switch to Subreddit Mode' : 'Switch to Global Mode'}
-          </button>
           <button onPress={onShowWebviewClick}>Launch App</button>
         </vstack>
         <vstack grow={webviewVisible} height={webviewVisible ? '100%' : '0%'}>
@@ -175,6 +157,33 @@ u/${username}'s Snoordle Results:
       </vstack>
     );
   },
+});
+
+// Define the job
+Devvit.addSchedulerJob({
+  name: 'daily-word-refresh',
+  onRun: async (event, context: JobContext) => {
+    const fetcher = new RedditFetcher(context);
+    await fetcher.refreshAllWords();
+    console.log('Daily word refresh completed');
+  },
+});
+
+// Add trigger to schedule the job daily
+Devvit.addTrigger({
+  event: 'AppInstall',
+  async onEvent(event, context) {
+    // Schedule initial job
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 0);  // Next midnight
+
+    await context.scheduler.runJob({
+      name: 'daily-word-refresh',
+      cron: '0 0 * * *'
+    });
+    
+    console.log('Word refresh job scheduled');
+  }
 });
 
 export default Devvit;

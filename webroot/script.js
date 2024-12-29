@@ -84,15 +84,27 @@ class App {
     };
 
     const calculateWordScore = (word, sourceWord) => {
-      // Base score is length of word
-      let score = word.length;
-      
-      // If word matches the source word, multiply by 10
+      // First check if it matches the source word (15 points)
       if (word.toLowerCase() === sourceWord.toLowerCase()) {
-        score *= 10;
+        return 15;
       }
       
-      return score;
+      // Score based on word length
+      const length = word.length;
+      switch (true) {
+        case length <= 2:
+          return 0;
+        case length === 3:
+          return 1;
+        case length === 4:
+          return 2;
+        case length === 5:
+          return 4;
+        case length === 6:
+          return 7;
+        default: // 7 or more letters
+          return 10;
+      }
     };
 
     // Add event listeners
