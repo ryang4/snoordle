@@ -6,15 +6,13 @@ class App {
       postId: '',
       letterMap: new Map(),
       foundWords: new Set(),
-      allFoundWords: new Set(), // Add this to track all words across rounds
-      timeLeft: 10,
-      timerInterval: null,
+      allFoundWords: new Set(),
       currentRound: 0,
       maxRounds: 5,
       isGameActive: true,
-      wordsByRound: [], // Will store words for each round
+      wordsByRound: [],
       keyboardListener: null,
-      roundWords: new Map(), // Add this to track which words were found in which rounds
+      roundWords: new Map(),
       totalScore: 0
     };
 
@@ -57,12 +55,10 @@ class App {
           showToast(`"${word}" has already been found!`);
         } else if (canMakeWord(word, this.state.words[this.state.currentRound - 1].word)) {
           this.state.foundWords.add(word);
-          this.state.allFoundWords.add(word); // Add to overall collection
+          this.state.allFoundWords.add(word);
           
-          // Store which round this word was found in
           this.state.roundWords.set(word, this.state.currentRound - 1);
           
-          // Calculate score for this word
           const currentSourceWord = this.state.words[this.state.currentRound - 1].word.toLowerCase();
           const wordScore = calculateWordScore(word, currentSourceWord);
           this.state.totalScore += wordScore;
@@ -76,20 +72,16 @@ class App {
     };
 
     const canMakeWord = (attempt, sourceWord) => {
-      // Convert both words to lowercase
       const sourceLetters = new Set(sourceWord.toLowerCase().split(''));
       
-      // Check if each letter in attempt exists in source word
       return attempt.toLowerCase().split('').every(letter => sourceLetters.has(letter));
     };
 
     const calculateWordScore = (word, sourceWord) => {
-      // First check if it matches the source word (15 points)
       if (word.toLowerCase() === sourceWord.toLowerCase()) {
         return 15;
       }
       
-      // Score based on word length
       const length = word.length;
       switch (true) {
         case length <= 2:
@@ -102,16 +94,15 @@ class App {
           return 4;
         case length === 6:
           return 7;
-        default: // 7 or more letters
+        default:
           return 10;
       }
     };
 
-    // Add event listeners
     submitButton.addEventListener('click', submitWord);
-    wordInput.addEventListener('keydown', (e) => {  // Changed from keyup to keydown
+    wordInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        e.preventDefault();  // Prevent default form submission
+        e.preventDefault();
         submitWord();
       }
     });
@@ -147,7 +138,6 @@ class App {
       const shuffledEntries = shuffleArray(Array.from(letterMap.entries()));
       const tiles = new Map();
 
-      // Create letter tiles
       shuffledEntries.forEach(([letter, frequency]) => {
         const tile = document.createElement('div');
         tile.classList.add('tile');
@@ -160,7 +150,6 @@ class App {
         tiles.set(letter, tile);
       });
 
-      // Add backspace tile
       const backspaceTile = document.createElement('div');
       backspaceTile.classList.add('tile', 'backspace');
       backspaceTile.innerText = '⌫';
@@ -170,12 +159,10 @@ class App {
       });
       letterGrid.appendChild(backspaceTile);
 
-      // Remove old keyboard listener if it exists
       if (this.state.keyboardListener) {
         document.removeEventListener('keydown', this.state.keyboardListener);
       }
 
-      // Add keyboard support
       const keyboardListener = (e) => {
         if (e.key === 'Backspace') {
           handleBackspace();
@@ -199,7 +186,6 @@ class App {
       document.addEventListener('keydown', keyboardListener);
       this.state.keyboardListener = keyboardListener;
 
-      // Animation helper
       const animateTile = (tile) => {
         tile.classList.add('active');
         setTimeout(() => tile.classList.remove('active'), 200);
@@ -212,14 +198,12 @@ class App {
         return;
       }
 
-      // Get current word object and create its letter grid
       const currentWordObj = this.state.words[this.state.currentRound];
       if (!currentWordObj) {
         endGame();
         return;
       }
 
-      // Create letter map from word
       const letters = [...currentWordObj.word.toUpperCase()];
       const letterMap = new Map();
       letters.forEach(letter => {
@@ -228,13 +212,11 @@ class App {
 
       createLetterGrid(letterMap);
       this.state.currentRound++;
-      startTimer();
     };
 
     const endGame = () => {
       this.state.isGameActive = false;
-      clearInterval(this.state.timerInterval);
-      showSentencePhase(); // Show sentence phase before final results
+      showSentencePhase();
     };
 
     const hideGameElements = () => {
@@ -257,7 +239,6 @@ class App {
       const resultsDiv = document.createElement('div');
       resultsDiv.classList.add('game-results');
     
-      // Calculate final statistics
       const foundWords = Array.from(this.state.allFoundWords);
       const roundWordCounts = Array(this.state.maxRounds).fill(0);
       const roundScores = Array(this.state.maxRounds).fill(0);
@@ -283,10 +264,8 @@ class App {
         .map((score, i) => `Round ${i + 1}: ${roundWordCounts[i]} words, ${score} points`)
         .join('<br>');
 
-      // Get the final sentence to display
       const finalSentence = this.state.finalSentence || 'No sentence created';
 
-      // Send results to Devvit
       window.parent.postMessage({
         type: 'devvit-message',
         data: {
@@ -333,10 +312,8 @@ class App {
       const roundWords = Array.from(this.state.foundWords)
         .filter(word => canMakeWord(word, currentWordObj.word));
 
-      // Clear input and grid
       wordInput.value = '';
       
-      // Use summary container instead of letter grid
       const summaryContainer = document.querySelector('#summary-container');
       summaryContainer.innerHTML = '';
       
@@ -358,10 +335,8 @@ class App {
       
       summaryContainer.appendChild(summaryDiv);
       
-      // Clear previous round's found words
       this.state.foundWords.clear();
       
-      // Add event listener to the next round button
       const nextButton = document.querySelector('#next-round-btn');
       if (nextButton) {
         nextButton.addEventListener('click', () => {
@@ -369,29 +344,6 @@ class App {
           showGameElements();
           startNextRound();
         });
-      }
-    };
-
-    const startTimer = () => {
-      clearInterval(this.state.timerInterval);
-      this.state.timeLeft = 10;
-      updateTimerDisplay();
-      
-      this.state.timerInterval = setInterval(() => {
-        this.state.timeLeft--;
-        updateTimerDisplay();
-        
-        if (this.state.timeLeft <= 0) {
-          clearInterval(this.state.timerInterval);
-          wordInput.value = '';
-          showRoundSummary();  // Show summary instead of immediately starting next round
-        }
-      }, 1000);
-    };
-
-    const updateTimerDisplay = () => {
-      if (timerElement) {
-        timerElement.textContent = this.state.timeLeft;
       }
     };
 
@@ -409,7 +361,7 @@ class App {
 
       if (type === 'devvit-message') {
         const { message } = data;
-        console.log('Received message:', message); // Add logging
+        console.log('Received message:', message);
 
         if (message.type === 'initialData') {
           const { username, words, postId } = message.data;
@@ -417,7 +369,7 @@ class App {
           this.state = {
             ...this.state,
             username,
-            words, // Keep the full array of {word, score} objects
+            words,
             postId
           };
         }
@@ -426,14 +378,13 @@ class App {
 
     const showSentencePhase = () => {
       hideGameElements();
-      letterGrid.innerHTML = ''; // Clear the letter grid
+      letterGrid.innerHTML = '';
       
       const sentencePhase = document.querySelector('#sentence-phase');
       const summaryContainer = document.querySelector('#summary-container');
       summaryContainer.innerHTML = '';
       sentencePhase.style.display = 'flex';
       
-      // Group words by round
       const wordsByRound = new Map();
       this.state.allFoundWords.forEach(word => {
         const roundIndex = this.state.roundWords.get(word);
@@ -443,11 +394,9 @@ class App {
         wordsByRound.get(roundIndex).add(word);
       });
       
-      // Create round columns
       const foundWordsRef = sentencePhase.querySelector('.found-words-reference');
       foundWordsRef.innerHTML = '';
       
-      // For each round, create a column
       for (let i = 0; i < this.state.maxRounds; i++) {
         const roundWords = Array.from(wordsByRound.get(i) || []).sort();
         const sourceWord = this.state.words[i].word.toUpperCase();
@@ -463,13 +412,11 @@ class App {
         foundWordsRef.appendChild(column);
       }
       
-      // Handle sentence submission
       const submitButton = document.querySelector('#submit-sentence');
       submitButton.addEventListener('click', () => {
         const sentence = document.querySelector('#sentence-input').value.toLowerCase();
-        const words = sentence.split(/\s+/).filter(word => word.length > 0); // Filter out empty strings
+        const words = sentence.split(/\s+/).filter(word => word.length > 0);
         
-        // Check sentence length
         if (words.length > 20) {
           showToast('Sentence cannot be longer than 20 words!');
           return;
@@ -478,7 +425,6 @@ class App {
         let bonusPoints = 0;
         const usedWords = new Set();
         
-        // Calculate bonus points for using found words
         words.forEach(word => {
           if (this.state.allFoundWords.has(word) && !usedWords.has(word)) {
             bonusPoints += 3;
@@ -489,10 +435,8 @@ class App {
         
         this.state.totalScore += bonusPoints;
         
-        // Store the sentence for display in results
         this.state.finalSentence = sentence;
         
-        // Hide sentence phase and show final results
         sentencePhase.style.display = 'none';
         showGameResults();
       });

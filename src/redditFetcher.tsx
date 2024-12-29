@@ -28,16 +28,18 @@ export class RedditFetcher {
     const subredditName = source === 'all' ? 'all' : source.name;
     const wordsKey = `words:${subredditName}`;
 
-    // Just fetch the words without updating
     const topWords = await this.context.redis.zRange(wordsKey, 0, count - 1, { 
       by: 'rank',
       reverse: true,
     });
     
-    return topWords.map(entry => ({
+    // Convert to array and sort by word length
+    const words = topWords.map(entry => ({
       word: entry.member,
       score: entry.score
     }));
+
+    return words.sort((a, b) => a.word.length - b.word.length);
   }
 
   async updateWordCounts(source: string): Promise<void> {
