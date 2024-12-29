@@ -17,14 +17,20 @@ export class RedditFetcher {
     'these', 'give', 'day', 'most', 'us'
   ]);
 
+  private readonly GLOBAL_MODE_KEY = 'snoordle:globalMode';
+
   constructor(private readonly context: Context) {}
 
   // getTopWords returns the top words used in the subreddit.
   // The count parameter specifies how many words to return. If empty, current subreddit is used.
-  async getTopWords(count: number = 20):  Promise<{word: string, score: number}[]> {
-    await this.updateWordCounts();
-    const subreddit = await this.context.reddit.getCurrentSubreddit();
-    const wordsKey = `words:${subreddit.name}`;
+  async getTopWords(count: number = 20): Promise<{word: string, score: number}[]> {
+    const isGlobal = await this.isGlobalMode();
+    const source = isGlobal ? 'all' : await this.context.reddit.getCurrentSubreddit();
+    const subredditName = source === 'all' ? 'all' : source.name;
+    
+    await this.cleanupRedis(subredditName);
+    await this.updateWordCounts(subredditName);
+    const wordsKey = `words:${subredditName}`;
 
     const topWords = await this.context.redis.zRange(wordsKey, 0, count - 1, { 
       by: 'rank',
@@ -37,25 +43,29 @@ export class RedditFetcher {
     }));
   }
 
-  async updateWordCounts(): Promise<void> {
-    const subreddit = await this.context.reddit.getCurrentSubreddit();
-    const posts = await subreddit.getTopPosts({ timeframe: 'day', limit: 25 });
+  async updateWordCounts(source: string): Promise<void> {
+    // Use Reddit's search API to get top posts
+    const posts = await this.context.reddit.search({
+      subreddit: source,
+      sort: 'top',
+      time: 'day',
+      limit: 25
+    });
 
-    // Get current post IDs and evict old posts IDs
     const currentPostIds = new Set<string>();
     for await (const post of posts) {
-      if (post.authorName !=='snoordle-v2') {
+      if (post.authorName !== 'snoordle-v2') {
         currentPostIds.add(post.id);
       }
     }
-      await this.removeExpiredPosts(subreddit.name, currentPostIds);
-  
-      // Process new posts, evict old posts
-      for await (const post of posts) {
-        if (post.authorName !=='snoordle-v2') {
-          await this.processPost(subreddit.name, post);
-        }
+
+    await this.removeExpiredPosts(source, currentPostIds);
+
+    for await (const post of posts) {
+      if (post.authorName !== 'snoordle-v2') {
+        await this.processPost(source, post);
       }
+    }
   }
   
   private async removeExpiredPosts(subredditName: string, currentPostIds: Set<string>): Promise<void> {
@@ -180,4 +190,52 @@ export class RedditFetcher {
       throw error;
     }
 }
+
+  private async cleanupRedis(subredditName: string): Promise<void> {
+    // Get all Redis keys for this subreddit
+    const keys = await this.context.redis.keys(`*${subredditName}*`);
+    
+    // Get current timestamp
+    const now = Date.now();
+    const oneDayAgo = now - (24 * 60 * 60 * 1000);
+    
+    for (const key of keys) {
+      if (key.startsWith(`posts:${subredditName}:active`)) {
+        // Clean up old posts from active set
+        const posts = await this.context.redis.zRange(key, 0, -1, { withScores: true });
+        const toRemove = posts.filter(post => post.score < oneDayAgo).map(post => post.member);
+        
+        if (toRemove.length > 0) {
+          await this.context.redis.zRem(key, toRemove);
+          
+          // Clean up associated post data
+          for (const postId of toRemove) {
+            await this.decrementPostCounts(subredditName, postId);
+            await this.context.redis.del(`posts:${subredditName}:${postId}`);
+          }
+        }
+      }
+    }
+    
+    // Reset word counts if they're older than a day
+    const lastUpdateKey = `lastUpdate:${subredditName}`;
+    const lastUpdate = await this.context.redis.get(lastUpdateKey);
+    
+    if (!lastUpdate || parseInt(lastUpdate) < oneDayAgo) {
+      await this.context.redis.del(`words:${subredditName}`);
+      await this.context.redis.set(lastUpdateKey, now.toString());
+    }
+  }
+
+  async toggleGlobalMode(): Promise<boolean> {
+    const currentMode = await this.context.redis.get(this.GLOBAL_MODE_KEY);
+    const newMode = currentMode !== 'true';
+    await this.context.redis.set(this.GLOBAL_MODE_KEY, newMode.toString());
+    return newMode;
+  }
+
+  private async isGlobalMode(): Promise<boolean> {
+    const mode = await this.context.redis.get(this.GLOBAL_MODE_KEY);
+    return mode === 'true';
+  }
 }

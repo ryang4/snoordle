@@ -1,6 +1,7 @@
 import './createPost.js';
 import { RedditFetcher } from './redditFetcher.js';
 import { useAsync } from '@devvit/public-api';
+import { useEffect, useState } from '@devvit/public-api';
 
 import { Devvit, useState } from '@devvit/public-api';
 
@@ -45,23 +46,24 @@ Devvit.addCustomPostType({
       return currUser?.username ?? 'anon';
     });
 
-    // // Load latest counter from redis with `useAsync` hook
-    // const [counter, setCounter] = useState(async () => {
-    //   const redisCount = await context.redis.get(`counter_${context.postId}`);
-    //   return Number(redisCount ?? 0);
-    // });
-
     // Initialize RedditFetcher and get top words
     const fetcher = new RedditFetcher(context);
     const [topWords, setTopWords] = useState(async () => {
       const words = await fetcher.getTopWords(20) 
       return words ?? ['loading...'];
     });
-//    const topWords = ['loading...'];
+
     const postId = context.postId ?? 'missing-post-id';
 
     // Create a reactive state for web view visibility
     const [webviewVisible, setWebviewVisible] = useState(false);
+
+    const [isGlobalMode, setIsGlobalMode] = useState(false);
+
+    useEffect(async () => {
+      const mode = await fetcher.isGlobalMode();
+      setIsGlobalMode(mode);
+    }, []);
 
     // When the web view invokes `window.parent.postMessage` this function is called
     const onMessage = async (msg: WebViewMessage) => {
@@ -149,6 +151,14 @@ u/${username}'s Snoordle Results:
             </hstack> */}
           </vstack>
           <spacer />
+          <button 
+            onPress={async () => {
+              const newMode = await fetcher.toggleGlobalMode();
+              setIsGlobalMode(newMode);
+            }}
+          >
+            {isGlobalMode ? 'Switch to Subreddit Mode' : 'Switch to Global Mode'}
+          </button>
           <button onPress={onShowWebviewClick}>Launch App</button>
         </vstack>
         <vstack grow={webviewVisible} height={webviewVisible ? '100%' : '0%'}>
