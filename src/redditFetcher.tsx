@@ -1,4 +1,4 @@
-import { Context, JobContext } from '@devvit/public-api';
+import { Context, JobContext, Post } from '@devvit/public-api';
 
 export class RedditFetcher {
   private readonly stopwords = new Set([
@@ -28,11 +28,15 @@ export class RedditFetcher {
     const subredditName = source === 'all' ? 'all' : source.name;
     const wordsKey = `words:${subredditName}`;
 
+    console.log('Fetching words from key:', wordsKey); // Debug log
+
     const topWords = await this.context.redis.zRange(wordsKey, 0, count - 1, { 
       by: 'rank',
       reverse: true,
     });
     
+    console.log('Found words:', topWords); // Debug log
+
     // Convert to array and sort by word length
     const words = topWords.map(entry => ({
       word: entry.member,
@@ -43,19 +47,21 @@ export class RedditFetcher {
   }
 
   async updateWordCounts(source: string): Promise<void> {
-    
     const posts = await this.context.reddit.getTopPosts({
       subredditName: source,
       timeframe: 'day',
       limit: 25
     });
 
+    // Add debug logging
+    console.log('Fetched posts:', posts);
+
     const currentPostIds = new Set<string>();
     for await (const post of posts) {
       if (post.authorName !== 'snoordle-v2') {
         currentPostIds.add(post.id);
-        // Process each post immediately
         await this.processPost(source, post);
+        console.log('Processed post:', post.id); // Debug log
       }
     }
   }
@@ -150,15 +156,12 @@ export class RedditFetcher {
   }
 
   async refreshAllWords(): Promise<void> {
-    // Clear and refresh r/all words
-    await this.cleanupRedis('all');
-    await this.updateWordCounts('all');
-
-    // Clear and refresh current subreddit words if not in global mode
-    // if (this.USE_GLOBAL !== 'true') {
-      const currentSub = await this.context.reddit.getCurrentSubreddit();
-      await this.cleanupRedis(currentSub.name);
-      await this.updateWordCounts(currentSub.name);
-    }
-  // }
+    const source = this.USE_GLOBAL ? 'all' : await this.context.reddit.getCurrentSubreddit();
+    const subredditName = source === 'all' ? 'all' : source.name;
+    
+    await this.cleanupRedis(subredditName);
+    await this.updateWordCounts(subredditName);
+    
+    console.log(`Refreshed words for: ${subredditName}`);
+  }
 }

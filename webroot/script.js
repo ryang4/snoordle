@@ -35,17 +35,6 @@ class App {
       }, 2000);
     };
 
-    const updateFoundWordsList = () => {
-      foundWordsList.innerHTML = '';
-      this.state.foundWords.forEach(word => {
-        const wordElement = document.createElement('span');
-        wordElement.classList.add('found-word');
-        wordElement.textContent = word;
-        foundWordsList.appendChild(wordElement);
-      });
-      wordCountElement.textContent = this.state.foundWords.size;
-    };
-
     const submitWord = () => {
       if (!this.state.isGameActive) return;
       
@@ -106,17 +95,6 @@ class App {
         submitWord();
       }
     });
-
-    const processLetters = (words) => {
-      const letterMap = new Map();
-      words.forEach(word => {
-        [...word.toUpperCase()].forEach(letter => {
-          letterMap.set(letter, (letterMap.get(letter) || 0) + 1);
-        });
-      });
-      this.state.letterMap = letterMap;
-      return letterMap;
-    };
 
     const shuffleArray = (array) => {
       for (let i = array.length - 1; i > 0; i--) {
@@ -225,8 +203,20 @@ class App {
     };
 
     const showGameElements = () => {
-      document.querySelector('#game-controls').style.display = 'flex';
-      document.querySelector('.game-header').style.display = 'flex';
+      const gameControls = document.querySelector('#game-controls');
+      const gameHeader = document.querySelector('.game-header');
+      
+      if (gameControls) {
+        gameControls.style.display = 'flex';
+      } else {
+        console.error('Could not find #game-controls element');
+      }
+      
+      if (gameHeader) {
+        gameHeader.style.display = 'flex';
+      } else {
+        console.error('Could not find .game-header element');
+      }
     };
 
     const showGameResults = () => {
@@ -305,49 +295,8 @@ class App {
       summaryContainer.appendChild(resultsDiv);
     };
 
-    const showRoundSummary = () => {
-      hideGameElements();
-      
-      const currentWordObj = this.state.words[this.state.currentRound - 1];
-      const roundWords = Array.from(this.state.foundWords)
-        .filter(word => canMakeWord(word, currentWordObj.word));
-
-      wordInput.value = '';
-      
-      const summaryContainer = document.querySelector('#summary-container');
-      summaryContainer.innerHTML = '';
-      
-      const summaryDiv = document.createElement('div');
-      summaryDiv.classList.add('round-summary');
-      
-      summaryDiv.innerHTML = `
-        <h2>Round ${this.state.currentRound} Complete!</h2>
-        <p class="source-word">
-          <strong>${currentWordObj.word.toUpperCase()}</strong> 
-          was used ${currentWordObj.score} times in the past day
-        </p>
-        <p>You found ${roundWords.length} words:</p>
-        <div class="found-words-list">
-          ${roundWords.join(', ') || 'No words found'}
-        </div>
-        <button id="next-round-btn">Next Round</button>
-      `;
-      
-      summaryContainer.appendChild(summaryDiv);
-      
-      this.state.foundWords.clear();
-      
-      const nextButton = document.querySelector('#next-round-btn');
-      if (nextButton) {
-        nextButton.addEventListener('click', () => {
-          summaryContainer.innerHTML = '';
-          showGameElements();
-          startNextRound();
-        });
-      }
-    };
-
     const startGame = () => {
+      console.log('Starting game');
       instructionsScreen.style.display = 'none';
       gameContainer.style.display = 'block';
       showGameElements();
@@ -365,6 +314,8 @@ class App {
 
         if (message.type === 'initialData') {
           const { username, words, postId } = message.data;
+
+          console.log('Received initial data:', { username, words, postId });
           
           this.state = {
             ...this.state,

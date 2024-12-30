@@ -46,7 +46,8 @@ Devvit.addCustomPostType({
     // Initialize RedditFetcher and get top words
     const fetcher = new RedditFetcher(context);
     const [topWords, setTopWords] = useState(async () => {
-      const words = await fetcher.getTopWords(20) 
+      await fetcher.refreshAllWords();
+      const words = await fetcher.getTopWords(20);
       return words ?? ['loading...'];
     });
 
@@ -102,11 +103,13 @@ u/${username}'s Snoordle Results:
     const onShowWebviewClick = () => {
       setWebviewVisible(true);
       
+      console.log('Sending words to webview:', topWords); // Debug log
+      
       context.ui.webView.postMessage('myWebView', {
         type: 'initialData',
         data: {
           username,
-          words: topWords, // topWords is already an array of {word, score} objects
+          words: topWords,
           postId,
         },
       });
