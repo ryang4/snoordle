@@ -17,7 +17,7 @@ export class RedditFetcher {
     'these', 'give', 'day', 'most', 'us'
   ]);
 
-  private readonly USE_GLOBAL = 'true';
+  private readonly USE_GLOBAL = true;
 
   constructor(private readonly context: Context | JobContext) {}
 

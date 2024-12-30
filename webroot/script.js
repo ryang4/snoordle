@@ -318,11 +318,23 @@ class App {
           console.log('Received initial data:', { username, words, postId });
           
           this.state = {
-            ...this.state,
-            username,
             words,
-            postId
+            username,
+            postId,
+            letterMap: new Map(),
+            foundWords: new Set(),
+            allFoundWords: new Set(),
+            currentRound: 0,
+            maxRounds: 5,
+            isGameActive: true,
+            wordsByRound: [],
+            keyboardListener: null,
+            roundWords: new Map(),
+            totalScore: 0
           };
+          
+          // Start game automatically when receiving initial data
+          startGame();
         }
       }
     });

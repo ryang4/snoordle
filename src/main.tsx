@@ -48,8 +48,33 @@ Devvit.addCustomPostType({
     const [topWords, setTopWords] = useState(async () => {
       await fetcher.refreshAllWords();
       const words = await fetcher.getTopWords(20);
-      return words ?? ['loading...'];
+      console.log('Initial words:', words);
+      return words ?? [];
     });
+    
+    // Function to refresh words
+    const refreshWords = async () => {
+      try {
+        await fetcher.refreshAllWords();
+        const words = await fetcher.getTopWords(20);
+        console.log('Refreshed words:', words);
+        setTopWords(words);
+        
+        // If webview is visible, send updated words
+        if (webviewVisible) {
+          context.ui.webView.postMessage('myWebView', {
+            type: 'initialData',
+            data: {
+              username,
+              words,
+              postId,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Error refreshing words:', error);
+      }
+    };
 
     const postId = context.postId ?? 'missing-post-id';
 
@@ -66,6 +91,9 @@ Devvit.addCustomPostType({
               text: formatGameResult(msg.data)
             });
             console.log('Posted comment:', comment.id);
+            
+            // Refresh words after game completion
+            await refreshWords();
           } catch (error) {
             console.error('Error posting comment:', error);
           }
@@ -100,10 +128,13 @@ u/${username}'s Snoordle Results:
     };
 
     // When the button is clicked, send initial data to web view and show it
-    const onShowWebviewClick = () => {
+    const onShowWebviewClick = async () => {
+      // Refresh words before showing webview
+      await refreshWords();
+      
       setWebviewVisible(true);
       
-      console.log('Sending words to webview:', topWords); // Debug log
+      console.log('Sending words to webview:', topWords);
       
       context.ui.webView.postMessage('myWebView', {
         type: 'initialData',
